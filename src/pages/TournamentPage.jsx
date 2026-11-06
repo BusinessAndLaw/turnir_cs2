@@ -1,5 +1,6 @@
+import {Button} from '../shared/Button.jsx';
 import React, {useEffect, useRef, useState} from 'react';
-import {advance} from '../entities/tournament/model.js';
+import {advance, allMatches} from '../entities/tournament/model.js';
 import {TeamEntry} from '../features/team-entry/TeamEntry.jsx';
 import {requestSession} from '../shared/api/session.js';
 import {Bracket} from '../widgets/bracket/Bracket.jsx';
@@ -43,9 +44,11 @@ export function TournamentPage() {
     setError('');
     try {
       setSession(await requestSession({base: session ? [session.id, session.revision] : null, next}));
+      return true;
     } catch (failure) {
       if ('current' in failure) setSession(failure.current);
       setError(failure.message);
+      return false;
     } finally {
       saving.current = false;
       setBusy(false);
@@ -54,20 +57,20 @@ export function TournamentPage() {
 
   function edit(id, change) {
     const next = JSON.parse(JSON.stringify(session));
-    change(next.rounds.flat().find(match => match.id === id));
+    change(allMatches(next).find(match => match.id === id));
     next.revision++;
     advance(next);
-    save(next);
+    return save(next);
   }
 
-  const numbers = new Map(session?.rounds.flat().map((match, index) => [match.id, index + 1]));
+  const numbers = new Map((session ? allMatches(session) : []).map((match, index) => [match.id, index + 1]));
   const names = new Map(session?.teams.map(team => [team.id, team.name]));
   return <>
-    <header className="top"><div className="top-inner"><strong className="brand">CS2 Setka</strong></div></header>
+
     <main>
       <nav aria-label="Разделы турнира">
-        <button aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>Команды и матчи</button>
-        <button aria-current={tab === 'bracket' ? 'page' : undefined} onClick={() => setTab('bracket')}>Турнирная сетка</button>
+        <Button variant="secondary" aria-current={tab === 'teams' ? 'page' : undefined} onClick={() => setTab('teams')}>Команды и матчи</Button>
+        <Button variant="secondary" aria-current={tab === 'bracket' ? 'page' : undefined} onClick={() => setTab('bracket')}>Турнирная сетка</Button>
       </nav>
       {error && <p role="alert" id="status">{error}</p>}
       {session === undefined ? <p>Загрузка сессии</p> : <>
@@ -77,13 +80,10 @@ export function TournamentPage() {
           {session && <Matches session={session} names={names} numbers={numbers} edit={edit} busy={busy} />}
         </section>
         {tab === 'bracket' && <section className="view">
-          <h1>Турнирная сетка</h1>
-          {session?.champion && <p id="champion">Чемпион · {names.get(session.champion)}</p>}
+          <h1 className="bracket-title">Турнирная сетка</h1>
           {session ? <Bracket session={session} names={names} numbers={numbers} /> : <p>Сначала распредели команды</p>}
         </section>}
       </>}
     </main>
   </>;
 }
-
-

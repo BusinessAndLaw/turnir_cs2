@@ -22,8 +22,16 @@ export function draw(names, pool) {
   const entrants = shuffle(teams.map(team => team.id));
   const roundCount = Math.ceil(Math.log2(teams.length));
   const size = 2 ** roundCount;
-  const byeSlots = new Set(shuffle(Array.from({length: size / 2}, (_, i) => i))
-    .slice(0, size - teams.length));
+  // Interleave opposite halves so automatic advances are spread across the tree.
+  function balancedSlots(start, length) {
+    if (length === 1) return [start];
+    const left = balancedSlots(start, length / 2);
+    const right = balancedSlots(start + length / 2, length / 2);
+    return randomInt(2)
+      ? left.flatMap((slot, i) => [slot, right[i]])
+      : right.flatMap((slot, i) => [slot, left[i]]);
+  }
+  const byeSlots = new Set(balancedSlots(0, size / 2).slice(0, size - teams.length));
   const rounds = Array.from({length: roundCount}, (_, round) =>
     Array.from({length: size / 2 ** (round + 1)}, (_, index) => {
       const bye = round === 0 && byeSlots.has(index);
@@ -61,6 +69,23 @@ export function advance(state) {
     });
   }
   state.champion = state.rounds.at(-1)[0].winner;
+  syncBronze(state);
+}
+
+function bronzeTeams(state) {
+  return state.rounds.at(-2)?.map(match => match.winner ? match.teams.find(team => team && team !== match.winner) ?? null : null);
+}
+
+function syncBronze(state) {
+  if (state.teams.length < 4) { state.bronze = null; return; }
+  const teams = bronzeTeams(state);
+  if (!state.bronze || teams.some((team, i) => team !== state.bronze.teams[i])) {
+    state.bronze = {id: 'bronze', teams, bye: false, map: null, startingSides: null, score: null, winner: null};
+  }
+}
+
+export function allMatches(state) {
+  return [...state.rounds.flat(), ...(state.bronze ? [state.bronze] : [])];
 }
 
 export function validScore(score) {
@@ -113,11 +138,29 @@ export function parseSession(raw, knownMaps) {
     });
   });
   if (seeded.size !== ids.size || state.champion !== state.rounds.at(-1)[0].winner) fail();
+  // Older saved tournaments gain the placement match without losing results.
+  if (state.bronze === undefined) syncBronze(state);
+  if (state.teams.length < 4) {
+    if (state.bronze !== null) fail();
+  } else {
+    const m = state.bronze;
+    const expected = bronzeTeams(state);
+    if (!m || m.id !== 'bronze' || m.bye !== false || !Array.isArray(m.teams) || m.teams.length !== 2
+        || expected.some((team, i) => team !== m.teams[i])) fail();
+    if (m.map === null) {
+      if (m.startingSides !== null || m.score !== null || m.winner !== null) fail();
+    } else {
+      if (!m.teams.every(Boolean) || !state.mapPool.includes(m.map) || !Array.isArray(m.startingSides)
+          || !['CT,T', 'T,CT'].includes(m.startingSides.join(','))) fail();
+      if (m.score === null ? m.winner !== null : !validScore(m.score)
+          || m.winner !== m.teams[Number(m.score[1] > m.score[0])]) fail();
+    }
+  }
   return state;
 }
 
 
 export function roundName(total, index) {
   const remaining = total - index;
-  return remaining === 1 ? "Финал" : remaining === 2 ? "Полуфиналы" : "Раунд " + (index + 1);
+  return remaining === 1 ? "Финал" : remaining === 2 ? "Полуфиналы" : remaining === 3 ? "1/4 финала" : "Раунд " + (index + 1);
 }

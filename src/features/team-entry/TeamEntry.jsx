@@ -1,4 +1,6 @@
+import {Button} from '../../shared/Button.jsx';
 import React, {useRef, useState} from 'react';
+import {useDialogClose} from '../../shared/useDialogClose.js';
 import {draw, maps} from '../../entities/tournament/model.js';
 
 export function TeamEntry({session, save, busy, onError}) {
@@ -6,6 +8,8 @@ export function TeamEntry({session, save, busy, onError}) {
   const [pool, setPool] = useState(session?.mapPool ?? Object.keys(maps).slice(0, 7));
   const teamDialog = useRef(null);
   const mapDialog = useRef(null);
+  const closeTeams = useDialogClose(teamDialog);
+  const closeMaps = useDialogClose(mapDialog);
   const [teamDraft, setTeamDraft] = useState(text);
   const [mapDraft, setMapDraft] = useState(pool);
   const names = text.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
@@ -25,40 +29,40 @@ export function TeamEntry({session, save, busy, onError}) {
 
   return <>
     <form id="draw" className="tournament-actions" onSubmit={submit}>
-      <button className="secondary" type="button" onClick={() => {
+      <Button variant="secondary" type="button" onClick={() => {
         setTeamDraft(text);
         teamDialog.current.showModal();
-      }}>Команды <span className="action-count">{names.length}</span></button>
-      <button className="secondary" type="button" onClick={() => {
+      }}>Команды <span className="action-count">{names.length}</span></Button>
+      <Button variant="secondary" type="button" onClick={() => {
         setMapDraft(pool);
         mapDialog.current.showModal();
-      }}>Карты <span className="action-count">{pool.length}</span></button>
-      <button disabled={busy}>Распределить команды</button>
+      }}>Карты <span className="action-count">{pool.length}</span></Button>
+      <Button disabled={busy}>Распределить команды</Button>
     </form>
 
-    <dialog ref={teamDialog} aria-labelledby="teams-title">
+    <dialog onCancel={event => { event.preventDefault(); closeTeams(); }} ref={teamDialog} aria-labelledby="teams-title">
       <form onSubmit={event => {
         event.preventDefault();
         setText(teamDraft);
-        teamDialog.current.close();
+        closeTeams();
       }}>
         <h2 id="teams-title">Команды турнира</h2>
         <label htmlFor="names">По одной команде на строку</label>
         <textarea id="names" rows={9} value={teamDraft} onChange={event => setTeamDraft(event.target.value)}
           placeholder={'Команда Alpha\nКоманда Bravo'} autoFocus />
         <div className="dialog-actions">
-          <button className="secondary" type="button" onClick={() => teamDialog.current.close()}>Отмена</button>
-          <button>Готово</button>
+          <Button variant="secondary" type="button" onClick={() => closeTeams()}>Отмена</Button>
+          <Button>Готово</Button>
         </div>
       </form>
     </dialog>
 
-    <dialog ref={mapDialog} className="map-dialog" aria-labelledby="maps-title">
+    <dialog onCancel={event => { event.preventDefault(); closeMaps(); }} ref={mapDialog} className="map-dialog" aria-labelledby="maps-title">
       <form onSubmit={event => {
         event.preventDefault();
         if (!mapDraft.length) return;
         setPool(mapDraft);
-        mapDialog.current.close();
+        closeMaps();
       }}>
         <h2 id="maps-title">Карты турнира</h2>
         <div id="maps">{Object.entries(maps).map(([id, name]) =>
@@ -67,13 +71,13 @@ export function TeamEntry({session, save, busy, onError}) {
               const checked = event.target.checked;
               setMapDraft(current => checked ? [...current, id] : current.filter(item => item !== id));
             }} />
-            <img src={'/maps/' + id + '.jpg'} alt="" width={480} height={270} />
+            <img draggable={false} src={'/maps/' + id + '.jpg'} alt="" width={480} height={270} />
             <span>{name}</span>
           </label>
         )}</div>
         <div className="dialog-actions">
-          <button className="secondary" type="button" onClick={() => mapDialog.current.close()}>Отмена</button>
-          <button disabled={!mapDraft.length}>Готово</button>
+          <Button variant="secondary" type="button" onClick={() => closeMaps()}>Отмена</Button>
+          <Button disabled={!mapDraft.length}>Готово</Button>
         </div>
       </form>
     </dialog>

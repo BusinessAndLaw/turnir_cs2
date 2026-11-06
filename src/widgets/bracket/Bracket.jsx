@@ -32,7 +32,7 @@ export function Bracket({session, names, numbers}) {
           const x2 = end.left - origin.left;
           const middle = (x1 + x2) / 2;
           const y1 = start.top + start.height / 2 - origin.top;
-          context.strokeStyle = source.winner ? '#094067' : '#90b4ce';
+          context.strokeStyle = source.winner ? '#168bd2' : '#cbdfea';
           context.beginPath();
           context.moveTo(x1, y1);
           context.lineTo(middle, y1);
@@ -63,12 +63,11 @@ export function Bracket({session, names, numbers}) {
           const sources = session.rounds[r - 1]?.slice(i * 2, i * 2 + 2).map(source => source.id);
           return <div className="bracket-slot" key={match.id}
             style={{gridColumn: r + 1, gridRow: (2 + i * span) + ' / span ' + span}}>
-            <MatchCard match={match} names={names} numbers={numbers} sources={sources} />
+            <MatchCard expandedBye placementRound={r === session.rounds.length - 1 ? 'final' : null} match={match} names={names} numbers={numbers} sources={sources} />
           </div>;
         })}
       </React.Fragment>)}
     </div>
+    {session.bronze && <section className="bronze-bracket"><h2>Матч за 3-е место</h2><MatchCard match={session.bronze} names={names} numbers={numbers} placementRound="bronze" /></section>}
   </div>;
 }
-
-
