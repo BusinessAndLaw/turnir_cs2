@@ -25,6 +25,7 @@ export function MatchCard({match, names, numbers, children, sources, expandedBye
         {match.score && <strong className="score-value" key={match.score.join(':')}>{match.score[slot]}</strong>}
       </div>;
     })}
+    {match.winner && match.score === null && <p className="match-result">Победитель · {names.get(match.winner)}</p>}
     {children}
   </article>;
 }

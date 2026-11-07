@@ -57,13 +57,13 @@ export function Bracket({session, names, numbers}) {
     <div id="bracket" ref={root} style={{'--rounds': session.rounds.length}}>
       <canvas ref={canvas} aria-hidden="true" />
       {session.rounds.map((round, r) => <React.Fragment key={r}>
-        <h2 style={{gridColumn: r + 1, gridRow: 1}}>{roundName(session.rounds.length, r)}</h2>
+        <h2 style={{gridColumn: r + 1, gridRow: 1}}>{(session.format === 'manual BO1' ? 'Подтверждённые пары' : roundName(session.rounds.length, r))}</h2>
         {round.map((match, i) => {
           const span = 2 ** r;
           const sources = session.rounds[r - 1]?.slice(i * 2, i * 2 + 2).map(source => source.id);
           return <div className="bracket-slot" key={match.id}
             style={{gridColumn: r + 1, gridRow: (2 + i * span) + ' / span ' + span}}>
-            <MatchCard expandedBye placementRound={r === session.rounds.length - 1 ? 'final' : null} match={match} names={names} numbers={numbers} sources={sources} />
+            <MatchCard expandedBye placementRound={session.format !== 'manual BO1' && r === session.rounds.length - 1 ? 'final' : null} match={match} names={names} numbers={numbers} sources={sources} />
           </div>;
         })}
       </React.Fragment>)}

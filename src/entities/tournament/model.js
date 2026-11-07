@@ -59,6 +59,10 @@ export function generateGame(match, pool) {
 }
 
 export function advance(state) {
+  if (state.format === 'manual BO1') {
+    state.champion = null;
+    return;
+  }
   for (let round = 1; round < state.rounds.length; round++) {
     const previous = state.rounds[round - 1];
     state.rounds[round].forEach((match, index) => {
@@ -107,6 +111,27 @@ export function parseSession(raw, knownMaps) {
     if (!team || !Number.isInteger(team.id) || team.id < 1 || ids.has(team.id)
         || typeof team.name !== "string" || !team.name.trim() || team.name.length > 80) fail();
     ids.add(team.id);
+  }
+  if (state.format === 'manual BO1') {
+    if (!Array.isArray(state.rounds) || state.rounds.length !== 1
+        || !Array.isArray(state.rounds[0]) || state.rounds[0].length !== ids.size / 2
+        || state.champion !== null || state.bronze !== null) fail();
+    const used = new Set();
+    state.rounds[0].forEach((m, index) => {
+      if (!m || m.id !== '1.' + (index + 1) || m.bye !== false
+          || !Array.isArray(m.teams) || m.teams.length !== 2
+          || !state.mapPool.includes(m.map)) fail();
+      for (const team of m.teams) {
+        if (!ids.has(team) || used.has(team)) fail();
+        used.add(team);
+      }
+      if (m.startingSides !== null && (!Array.isArray(m.startingSides)
+          || !['CT,T', 'T,CT'].includes(m.startingSides.join(',')))) fail();
+      if (m.score === null) {
+        if (m.winner !== null && !m.teams.includes(m.winner)) fail();
+      } else if (!validScore(m.score) || m.winner !== m.teams[Number(m.score[1] > m.score[0])]) fail();
+    });
+    return state;
   }
   const count = Math.ceil(Math.log2(ids.size));
   if (!Array.isArray(state.rounds) || state.rounds.length !== count) fail();

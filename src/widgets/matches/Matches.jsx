@@ -33,13 +33,13 @@ export function Matches({session, names, numbers, edit, busy}) {
     const game = {};
     generateGame(game, session.mapPool);
     if (await edit(match.id, current => Object.assign(current, game))) {
-      setRoulette({map: game.map, pool: [...session.mapPool], number: numbers.get(match.id)});
+      setRoulette({map: game.map, pool: [...session.mapPool], number: numbers.get(match.id), teams: match.teams.map(id => names.get(id)), startingSides: [...game.startingSides]});
     }
   }
   return <>{roulette && <MapRoulette {...roulette} onClose={() => setRoulette(null)} />}{[...session.rounds, ...(session.bronze ? [[session.bronze]] : [])].map((round, index) => <section className="game-round" key={index}>
-    <h2>{index === session.rounds.length ? 'Матч за 3-е место' : roundName(session.rounds.length, index)}</h2>
+    <h2>{index === session.rounds.length ? 'Матч за 3-е место' : (session.format === 'manual BO1' ? 'Подтверждённые пары' : roundName(session.rounds.length, index))}</h2>
     <div className="game-grid">{round.map((match, i) =>
-      <MatchCard placementRound={match.id === 'bronze' ? 'bronze' : index === session.rounds.length - 1 ? 'final' : null} expandedBye key={match.id} match={match} names={names} numbers={numbers}
+      <MatchCard placementRound={match.id === 'bronze' ? 'bronze' : session.format !== 'manual BO1' && index === session.rounds.length - 1 ? 'final' : null} expandedBye key={match.id} match={match} names={names} numbers={numbers}
         sources={session.rounds[index - 1]?.slice(i * 2, i * 2 + 2).map(source => source.id)}>
         {match.teams.every(Boolean) && (match.map ?
           <ScoreForm key={JSON.stringify([match.teams, match.score])} match={match} names={names} edit={edit} busy={busy} /> :
